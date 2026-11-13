@@ -1,0 +1,446 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Default-Deny Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helper Functions ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidOptionalString(val, maxLen) {
+      return val is string && val.size() <= maxLen;
+    }
+
+    function hasOwnerPrefix(docId, prefix) {
+      return isSignedIn()
+        && docId.size() > (prefix.size() + request.auth.uid.size() + 2)
+        && docId[0:(prefix.size() + request.auth.uid.size() + 2)] == (prefix + '_' + request.auth.uid + '_');
+    }
+
+    // --- Validation Blueprints ---
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['userId', 'name', 'email', 'ecoPoints', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly([
+          'userId', 'name', 'email', 'profileImage', 'location',
+          'ecoPoints', 'goalReuse', 'goalDonate', 'goalRecycle',
+          'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.userId)
+        && data.userId == request.auth.uid
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 100
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 160
+        && (!('profileImage' in data) || isValidOptionalString(data.profileImage, 200000))
+        && (!('location' in data) || isValidOptionalString(data.location, 120))
+        && data.ecoPoints is int && data.ecoPoints >= 0 && data.ecoPoints <= 1000000
+        && (!('goalReuse' in data) || (data.goalReuse is int && data.goalReuse >= 1 && data.goalReuse <= 500))
+        && (!('goalDonate' in data) || (data.goalDonate is int && data.goalDonate >= 1 && data.goalDonate <= 500))
+        && (!('goalRecycle' in data) || (data.goalRecycle is int && data.goalRecycle >= 1 && data.goalRecycle <= 500))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPublicProfile(data) {
+      return data.keys().hasAll([
+          'userId', 'displayName', 'ecoPoints', 'scannedCount',
+          'reusedCount', 'donatedCount', 'recycledCount',
+          'exchangedCount', 'disposedCount', 'estimatedKgDiverted', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'userId', 'displayName', 'photoUrl', 'city', 'ecoPoints',
+          'scannedCount', 'reusedCount', 'donatedCount', 'recycledCount',
+          'exchangedCount', 'disposedCount', 'estimatedKgDiverted', 'updatedAt'
+        ])
+        && isValidId(data.userId)
+        && data.userId == request.auth.uid
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80
+        && (!('photoUrl' in data) || isValidOptionalString(data.photoUrl, 200000))
+        && (!('city' in data) || isValidOptionalString(data.city, 80))
+        && data.ecoPoints is int && data.ecoPoints >= 0 && data.ecoPoints <= 1000000
+        && data.scannedCount is int && data.scannedCount >= 0 && data.scannedCount <= 100000
+        && data.reusedCount is int && data.reusedCount >= 0 && data.reusedCount <= 100000
+        && data.donatedCount is int && data.donatedCount >= 0 && data.donatedCount <= 100000
+        && data.recycledCount is int && data.recycledCount >= 0 && data.recycledCount <= 100000
+        && data.exchangedCount is int && data.exchangedCount >= 0 && data.exchangedCount <= 100000
+        && data.disposedCount is int && data.disposedCount >= 0 && data.disposedCount <= 100000
+        && data.estimatedKgDiverted is number && data.estimatedKgDiverted >= 0 && data.estimatedKgDiverted <= 500000
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidScannedProduct(data) {
+      return data.keys().hasAll([
+          'scanId', 'userId', 'productName', 'category',
+          'material', 'condition', 'recommendation', 'isSaved', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'scanId', 'userId', 'productName', 'category',
+          'material', 'condition', 'recommendation', 'alternativeUses',
+          'recyclingSteps', 'analysisPayload', 'imageUrl', 'isSaved',
+          'actionTaken', 'createdAt'
+        ])
+        && isValidId(data.scanId)
+        && isValidId(data.userId)
+        && data.userId == request.auth.uid
+        && data.productName is string && data.productName.size() >= 1 && data.productName.size() <= 140
+        && data.category in [
+          'Plastic', 'Paper and cardboard', 'Glass', 'Metal',
+          'Electronic waste', 'Clothes and textiles', 'Furniture',
+          'Wood', 'Food waste', 'Household items', 'Other materials'
+        ]
+        && data.material is string && data.material.size() >= 1 && data.material.size() <= 200
+        && data.condition is string && data.condition.size() >= 1 && data.condition.size() <= 200
+        && data.recommendation in ['REUSE', 'DONATE', 'RECYCLE', 'DISPOSE']
+        && (!('alternativeUses' in data) || (data.alternativeUses is list && data.alternativeUses.size() <= 10 && (data.alternativeUses.size() == 0 || data.alternativeUses[0] is string)))
+        && (!('recyclingSteps' in data) || (data.recyclingSteps is list && data.recyclingSteps.size() <= 12 && (data.recyclingSteps.size() == 0 || data.recyclingSteps[0] is string)))
+        && (!('analysisPayload' in data) || (data.analysisPayload is map && data.analysisPayload.keys().size() <= 20))
+        && (!('imageUrl' in data) || isValidOptionalString(data.imageUrl, 200000))
+        && data.isSaved is bool
+        && (!('actionTaken' in data) || isValidOptionalString(data.actionTaken, 40))
+        && data.createdAt is timestamp;
+    }
+
+    function isValidCommunityListing(data) {
+      return data.keys().hasAll([
+          'listingId', 'userId', 'sellerName', 'productName',
+          'description', 'category', 'condition', 'approximateLocation',
+          'listingType', 'status', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'listingId', 'userId', 'sellerName', 'productName',
+          'description', 'category', 'condition', 'imageUrl',
+          'approximateLocation', 'listingType', 'exchangePreference',
+          'status', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.listingId)
+        && isValidId(data.userId)
+        && data.sellerName is string && data.sellerName.size() >= 1 && data.sellerName.size() <= 80
+        && data.productName is string && data.productName.size() >= 2 && data.productName.size() <= 120
+        && data.description is string && data.description.size() >= 5 && data.description.size() <= 1000
+        && data.category in [
+          'Electronics', 'Furniture', 'Clothing', 'Books',
+          'Toys', 'Household products', 'Kitchen items',
+          'School supplies', 'Other'
+        ]
+        && data.condition in ['Like New', 'Good', 'Fair']
+        && (!('imageUrl' in data) || isValidOptionalString(data.imageUrl, 200000))
+        && data.approximateLocation is string && data.approximateLocation.size() >= 2 && data.approximateLocation.size() <= 100
+        && data.listingType in ['free', 'exchange']
+        && (!('exchangePreference' in data) || isValidOptionalString(data.exchangePreference, 160))
+        && data.status in ['available', 'exchanged', 'unavailable']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidExchangeRequest(data) {
+      return data.keys().hasAll([
+          'requestId', 'listingId', 'listingTitle', 'senderId',
+          'senderName', 'receiverId', 'receiverName', 'message',
+          'status', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'requestId', 'listingId', 'listingTitle', 'senderId',
+          'senderName', 'receiverId', 'receiverName', 'message',
+          'status', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.requestId)
+        && isValidId(data.listingId)
+        && data.listingTitle is string && data.listingTitle.size() >= 1 && data.listingTitle.size() <= 140
+        && isValidId(data.senderId)
+        && isValidId(data.receiverId)
+        && data.senderId != data.receiverId
+        && data.senderName is string && data.senderName.size() >= 1 && data.senderName.size() <= 80
+        && data.receiverName is string && data.receiverName.size() >= 1 && data.receiverName.size() <= 80
+        && data.message is string && data.message.size() >= 1 && data.message.size() <= 600
+        && data.status in ['pending', 'accepted', 'rejected', 'cancelled']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidExchangeMessage(data, requestId) {
+      return data.keys().hasAll([
+          'messageId', 'requestId', 'senderId', 'receiverId',
+          'authorId', 'authorName', 'body', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'messageId', 'requestId', 'senderId', 'receiverId',
+          'authorId', 'authorName', 'body', 'createdAt'
+        ])
+        && isValidId(data.messageId)
+        && data.requestId == requestId
+        && isValidId(data.senderId)
+        && isValidId(data.receiverId)
+        && isValidId(data.authorId)
+        && data.authorId == request.auth.uid
+        && (data.authorId == data.senderId || data.authorId == data.receiverId)
+        && data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 80
+        && data.body is string && data.body.size() >= 1 && data.body.size() <= 600
+        && data.createdAt is timestamp;
+    }
+
+    function isValidUserActivity(data) {
+      return data.keys().hasAll([
+          'activityId', 'userId', 'activityType', 'productId',
+          'productName', 'category', 'estimatedKg', 'verifiedStatus',
+          'ecoPoints', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'activityId', 'userId', 'activityType', 'productId',
+          'productName', 'category', 'estimatedKg', 'verifiedStatus',
+          'ecoPoints', 'createdAt'
+        ])
+        && isValidId(data.activityId)
+        && isValidId(data.userId)
+        && data.userId == request.auth.uid
+        && data.activityType in ['scan', 'reuse', 'donate', 'recycle', 'exchange', 'dispose']
+        && isValidId(data.productId)
+        && data.productName is string && data.productName.size() >= 1 && data.productName.size() <= 140
+        && data.category is string && data.category.size() >= 1 && data.category.size() <= 60
+        && data.estimatedKg is number && data.estimatedKg >= 0 && data.estimatedKg <= 500
+        && data.verifiedStatus == 'verified'
+        && data.ecoPoints is int && data.ecoPoints >= 0 && data.ecoPoints <= 200
+        && data.createdAt is timestamp;
+    }
+
+    function isValidAchievement(data) {
+      return data.keys().hasAll(['achievementId', 'userId', 'badgeType', 'earnedAt'])
+        && data.keys().hasOnly(['achievementId', 'userId', 'badgeType', 'earnedAt'])
+        && isValidId(data.achievementId)
+        && isValidId(data.userId)
+        && data.userId == request.auth.uid
+        && data.badgeType in [
+          'First Scan', 'Reuse Champion', 'Recycling Hero',
+          'Donation Supporter', 'Community Helper', 'Eco Warrior'
+        ]
+        && data.earnedAt is timestamp;
+    }
+
+    // --- Collection Rules ---
+
+    // 1. Private User Profiles (Strict PII Isolation)
+    match /users/{userId} {
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow list: if false;
+      allow create: if isVerifiedUser()
+        && isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming())
+        && incoming().userId == userId
+        && incoming().ecoPoints == 0
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser()
+        && isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming())
+        && incoming().userId == existing().userId
+        && incoming().email == existing().email
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'name', 'profileImage', 'location', 'ecoPoints',
+          'goalReuse', 'goalDonate', 'goalRecycle', 'updatedAt'
+        ]);
+      allow delete: if false;
+    }
+
+    // 2. Public Contributor Profiles (No PII - Leaderboard & Impact Aggregation)
+    match /publicProfiles/{userId} {
+      allow get: if isValidId(userId);
+      allow list: if true;
+      allow create: if isVerifiedUser()
+        && isValidId(userId)
+        && isOwner(userId)
+        && isValidPublicProfile(incoming())
+        && incoming().userId == userId
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser()
+        && isValidId(userId)
+        && isOwner(userId)
+        && isValidPublicProfile(incoming())
+        && incoming().userId == existing().userId
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName', 'photoUrl', 'city', 'ecoPoints',
+          'scannedCount', 'reusedCount', 'donatedCount', 'recycledCount',
+          'exchangedCount', 'disposedCount', 'estimatedKgDiverted', 'updatedAt'
+        ]);
+      allow delete: if false;
+    }
+
+    // 3. Scanned Products (Private per user)
+    match /scannedProducts/{scanId} {
+      allow get: if isValidId(scanId) && isSignedIn() && resource != null && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isVerifiedUser()
+        && isValidId(scanId)
+        && isValidScannedProduct(incoming())
+        && incoming().scanId == scanId
+        && incoming().createdAt == request.time;
+      allow update: if isVerifiedUser()
+        && isValidId(scanId)
+        && existing().userId == request.auth.uid
+        && isValidScannedProduct(incoming())
+        && incoming().scanId == existing().scanId
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().diff(existing()).affectedKeys().hasOnly(['isSaved', 'actionTaken']);
+      allow delete: if isVerifiedUser()
+        && isValidId(scanId)
+        && existing().userId == request.auth.uid;
+    }
+
+    // 4. Community Listings (Public Marketplace, No PII)
+    match /communityListings/{listingId} {
+      allow get: if isValidId(listingId);
+      allow list: if true;
+      allow create: if isVerifiedUser()
+        && isValidId(listingId)
+        && isValidCommunityListing(incoming())
+        && incoming().listingId == listingId
+        && incoming().userId == request.auth.uid
+        && incoming().status == 'available'
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser()
+        && isValidId(listingId)
+        && existing().userId == request.auth.uid
+        && existing().status == 'available'
+        && isValidCommunityListing(incoming())
+        && incoming().listingId == existing().listingId
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'productName', 'description', 'category', 'condition',
+          'imageUrl', 'approximateLocation', 'listingType',
+          'exchangePreference', 'status', 'updatedAt'
+        ]);
+      allow delete: if isVerifiedUser()
+        && isValidId(listingId)
+        && existing().userId == request.auth.uid;
+    }
+
+    // 5. Exchange Requests (Private between Sender & Receiver)
+    match /exchangeRequests/{requestId} {
+      allow get: if isValidId(requestId)
+        && isSignedIn()
+        && resource != null
+        && (existing().senderId == request.auth.uid || existing().receiverId == request.auth.uid);
+      allow list: if isSignedIn()
+        && (resource.data.senderId == request.auth.uid || resource.data.receiverId == request.auth.uid);
+      allow create: if isVerifiedUser()
+        && isValidId(requestId)
+        && isValidExchangeRequest(incoming())
+        && incoming().requestId == requestId
+        && incoming().senderId == request.auth.uid
+        && incoming().status == 'pending'
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && exists(/databases/$(database)/documents/communityListings/$(incoming().listingId))
+        && get(/databases/$(database)/documents/communityListings/$(incoming().listingId)).data.userId == incoming().receiverId
+        && get(/databases/$(database)/documents/communityListings/$(incoming().listingId)).data.status == 'available';
+      allow update: if isVerifiedUser()
+        && isValidId(requestId)
+        && isValidExchangeRequest(incoming())
+        && incoming().requestId == existing().requestId
+        && incoming().listingId == existing().listingId
+        && incoming().senderId == existing().senderId
+        && incoming().receiverId == existing().receiverId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && existing().status == 'pending'
+        && (
+          (request.auth.uid == existing().receiverId
+            && incoming().status in ['accepted', 'rejected']
+            && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])) ||
+          (request.auth.uid == existing().senderId
+            && incoming().status == 'cancelled'
+            && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']))
+        );
+      allow delete: if false;
+
+      // 5a. In-App Messages Subcollection
+      match /messages/{messageId} {
+        allow get: if isValidId(requestId)
+          && isValidId(messageId)
+          && isSignedIn()
+          && (
+            get(/databases/$(database)/documents/exchangeRequests/$(requestId)).data.senderId == request.auth.uid ||
+            get(/databases/$(database)/documents/exchangeRequests/$(requestId)).data.receiverId == request.auth.uid
+          );
+        allow list: if isSignedIn()
+          && (resource.data.senderId == request.auth.uid || resource.data.receiverId == request.auth.uid);
+        allow create: if isVerifiedUser()
+          && isValidId(requestId)
+          && isValidId(messageId)
+          && isValidExchangeMessage(incoming(), requestId)
+          && incoming().messageId == messageId
+          && incoming().createdAt == request.time
+          && exists(/databases/$(database)/documents/exchangeRequests/$(requestId))
+          && get(/databases/$(database)/documents/exchangeRequests/$(requestId)).data.senderId == incoming().senderId
+          && get(/databases/$(database)/documents/exchangeRequests/$(requestId)).data.receiverId == incoming().receiverId
+          && get(/databases/$(database)/documents/exchangeRequests/$(requestId)).data.status in ['pending', 'accepted'];
+        allow update, delete: if false;
+      }
+    }
+
+    // 6. Verified User Activities (Immutable after creation)
+    match /userActivities/{activityId} {
+      allow get: if isValidId(activityId)
+        && isSignedIn()
+        && (
+          (resource == null && hasOwnerPrefix(activityId, 'act')) ||
+          (resource != null && existing().userId == request.auth.uid)
+        );
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isVerifiedUser()
+        && isValidId(activityId)
+        && hasOwnerPrefix(activityId, 'act')
+        && isValidUserActivity(incoming())
+        && incoming().activityId == activityId
+        && incoming().createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    // 7. Achievements (Immutable after creation)
+    match /achievements/{achievementId} {
+      allow get: if isValidId(achievementId)
+        && isSignedIn()
+        && (
+          (resource == null && hasOwnerPrefix(achievementId, 'ach')) ||
+          (resource != null && existing().userId == request.auth.uid)
+        );
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isVerifiedUser()
+        && isValidId(achievementId)
+        && hasOwnerPrefix(achievementId, 'ach')
+        && isValidAchievement(incoming())
+        && incoming().achievementId == achievementId
+        && incoming().earnedAt == request.time;
+      allow update, delete: if false;
+    }
+  }
+}

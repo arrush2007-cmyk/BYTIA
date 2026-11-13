@@ -1,0 +1,6 @@
+{
+  "name": "Before You Throw It Away",
+  "description": "Think Before You Throw – Give Every Product a Second Life. AI-powered waste scanner, circular decision engine, community exchange, recycling guide, and environmental impact dashboard.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

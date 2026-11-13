@@ -1,0 +1,483 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Private user account profile and sustainability goals.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 160
+        },
+        "profileImage": {
+          "type": "string",
+          "maxLength": 200000
+        },
+        "location": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "ecoPoints": {
+          "type": "integer"
+        },
+        "goalReuse": {
+          "type": "integer"
+        },
+        "goalDonate": {
+          "type": "integer"
+        },
+        "goalRecycle": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["userId", "name", "email", "ecoPoints", "createdAt", "updatedAt"]
+    },
+    "PublicProfile": {
+      "title": "PublicProfile",
+      "description": "Non-PII public contributor profile for leaderboard and marketplace attribution.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "photoUrl": {
+          "type": "string",
+          "maxLength": 200000
+        },
+        "city": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "ecoPoints": {
+          "type": "integer"
+        },
+        "scannedCount": {
+          "type": "integer"
+        },
+        "reusedCount": {
+          "type": "integer"
+        },
+        "donatedCount": {
+          "type": "integer"
+        },
+        "recycledCount": {
+          "type": "integer"
+        },
+        "exchangedCount": {
+          "type": "integer"
+        },
+        "disposedCount": {
+          "type": "integer"
+        },
+        "estimatedKgDiverted": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["userId", "displayName", "ecoPoints", "scannedCount", "reusedCount", "donatedCount", "recycledCount", "exchangedCount", "disposedCount", "estimatedKgDiverted", "updatedAt"]
+    },
+    "ScannedProduct": {
+      "title": "ScannedProduct",
+      "description": "AI waste analysis result and decision recommendation.",
+      "type": "object",
+      "properties": {
+        "scanId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "userId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "productName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 140
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Plastic",
+            "Paper and cardboard",
+            "Glass",
+            "Metal",
+            "Electronic waste",
+            "Clothes and textiles",
+            "Furniture",
+            "Wood",
+            "Food waste",
+            "Household items",
+            "Other materials"
+          ]
+        },
+        "material": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "condition": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "recommendation": {
+          "type": "string",
+          "enum": ["REUSE", "DONATE", "RECYCLE", "DISPOSE"]
+        },
+        "alternativeUses": {
+          "type": "array"
+        },
+        "recyclingSteps": {
+          "type": "array"
+        },
+        "analysisPayload": {
+          "type": "object"
+        },
+        "imageUrl": {
+          "type": "string",
+          "maxLength": 200000
+        },
+        "isSaved": {
+          "type": "boolean"
+        },
+        "actionTaken": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["scanId", "userId", "productName", "category", "material", "condition", "recommendation", "isSaved", "createdAt"]
+    },
+    "CommunityListing": {
+      "title": "CommunityListing",
+      "description": "Community exchange or free giveaway item listing.",
+      "type": "object",
+      "properties": {
+        "listingId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "userId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "sellerName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "productName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "description": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 1000
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Electronics",
+            "Furniture",
+            "Clothing",
+            "Books",
+            "Toys",
+            "Household products",
+            "Kitchen items",
+            "School supplies",
+            "Other"
+          ]
+        },
+        "condition": {
+          "type": "string",
+          "enum": ["Like New", "Good", "Fair"]
+        },
+        "imageUrl": {
+          "type": "string",
+          "maxLength": 200000
+        },
+        "approximateLocation": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "listingType": {
+          "type": "string",
+          "enum": ["free", "exchange"]
+        },
+        "exchangePreference": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "status": {
+          "type": "string",
+          "enum": ["available", "exchanged", "unavailable"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["listingId", "userId", "sellerName", "productName", "description", "category", "condition", "approximateLocation", "listingType", "status", "createdAt", "updatedAt"]
+    },
+    "ExchangeRequest": {
+      "title": "ExchangeRequest",
+      "description": "Exchange or giveaway request between two community members.",
+      "type": "object",
+      "properties": {
+        "requestId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "listingId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "listingTitle": {
+          "type": "string",
+          "maxLength": 140
+        },
+        "senderId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "senderName": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "receiverId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "receiverName": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 600
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "accepted", "rejected", "cancelled"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["requestId", "listingId", "listingTitle", "senderId", "senderName", "receiverId", "receiverName", "message", "status", "createdAt", "updatedAt"]
+    },
+    "ExchangeMessage": {
+      "title": "ExchangeMessage",
+      "description": "In-app chat message within an exchange request thread.",
+      "type": "object",
+      "properties": {
+        "messageId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "requestId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "senderId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "receiverId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "authorId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "authorName": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "body": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 600
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["messageId", "requestId", "senderId", "receiverId", "authorId", "authorName", "body", "createdAt"]
+    },
+    "UserActivity": {
+      "title": "UserActivity",
+      "description": "Verified sustainability action logged by a user.",
+      "type": "object",
+      "properties": {
+        "activityId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "userId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "activityType": {
+          "type": "string",
+          "enum": ["scan", "reuse", "donate", "recycle", "exchange", "dispose"]
+        },
+        "productId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "productName": {
+          "type": "string",
+          "maxLength": 140
+        },
+        "category": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "estimatedKg": {
+          "type": "number"
+        },
+        "verifiedStatus": {
+          "type": "string",
+          "enum": ["verified"]
+        },
+        "ecoPoints": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["activityId", "userId", "activityType", "productId", "productName", "category", "estimatedKg", "verifiedStatus", "ecoPoints", "createdAt"]
+    },
+    "Achievement": {
+      "title": "Achievement",
+      "description": "Unlocked sustainability badge.",
+      "type": "object",
+      "properties": {
+        "achievementId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "userId": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "maxLength": 128
+        },
+        "badgeType": {
+          "type": "string",
+          "enum": [
+            "First Scan",
+            "Reuse Champion",
+            "Recycling Hero",
+            "Donation Supporter",
+            "Community Helper",
+            "Eco Warrior"
+          ]
+        },
+        "earnedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["achievementId", "userId", "badgeType", "earnedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Owner-only private user profile containing PII."
+    },
+    "/publicProfiles/{userId}": {
+      "schema": { "$ref": "#/entities/PublicProfile" },
+      "description": "Public contributor stats and leaderboard data without PII."
+    },
+    "/scannedProducts/{scanId}": {
+      "schema": { "$ref": "#/entities/ScannedProduct" },
+      "description": "Owner-only AI waste scanner results and saved recommendations."
+    },
+    "/communityListings/{listingId}": {
+      "schema": { "$ref": "#/entities/CommunityListing" },
+      "description": "Publicly browsable community exchange and free giveaway listings."
+    },
+    "/exchangeRequests/{requestId}": {
+      "schema": { "$ref": "#/entities/ExchangeRequest" },
+      "description": "Private exchange request threads visible only to sender and receiver."
+    },
+    "/exchangeRequests/{requestId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/ExchangeMessage" },
+      "description": "In-app messages for an exchange request."
+    },
+    "/userActivities/{activityId}": {
+      "schema": { "$ref": "#/entities/UserActivity" },
+      "description": "Immutable verified sustainability activity log entries per user."
+    },
+    "/achievements/{achievementId}": {
+      "schema": { "$ref": "#/entities/Achievement" },
+      "description": "Immutable unlocked achievement badges per user."
+    }
+  }
+}
